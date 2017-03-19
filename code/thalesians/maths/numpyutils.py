@@ -1,6 +1,6 @@
 import numpy as np
 
-import maths.numpypreconditions as npp
+import thalesians.maths.numpypreconditions as npp
 
 def immutablecopyof(arg):
 	if isinstance(arg, np.ndarray):

@@ -1,8 +1,8 @@
 import numpy as np
 
-import maths.numpypreconditions as npp
-import maths.numpyutils as npu
-import utils.preconditions as pre
+import thalesians.maths.numpypreconditions as npp
+import thalesians.maths.numpyutils as npu
+import thalesians.utilities.preconditions as pre
 
 class NormalVariatesGenerator(object):
     def __init__(self, randomstate=None):

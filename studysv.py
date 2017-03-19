@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
 
-import maths.numpyutils as npu
-import filtering.kalman
+import thalesians.maths.numpyutils as npu
+import thalesians.filtering.lowlevel.kalman as kalman
 import filtering.particle
 import filtering.run
 import filtering.visualisation
 import sv.filtering.gaussian
 import sv.filtering.particle
-import sv.filtering.unscented
+import thalesians.filtering.lowlevel.unscented as unscented
 import sv.generation
 import sv.loading
 import sv.visualisation
@@ -29,14 +29,15 @@ def runsvljparticlefilter(svdata, params, randomstate):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar')
     
 def runsvl2particlefilter(svdata, params, randomstate):
     initialdistribution = sv.generation.LogVarInitialDistribution(params, randomstate)
-    transitiondistribution = sv.filtering.particle.SVL2LogVarTransitionDistribution(params, randomstate)
-    weightingfunction = sv.filtering.particle.SVL2WeightingFunction(params)    
+    context = {}
+    transitiondistribution = sv.filtering.particle.SVL2LogVarTransitionDistribution(params, context, randomstate)
+    weightingfunction = sv.filtering.particle.SVL2WeightingFunction(params, context)
     particlecount = 1000
-    predictedobservationsampler = sv.filtering.particle.SVL2PredictedObservationSampler(params, randomstate)
+    predictedobservationsampler = sv.filtering.particle.SVL2PredictedObservationSampler(params, context, randomstate)
     stochfilter = filtering.particle.RegularisedResamplingParticleFilter(
             initialdistribution=initialdistribution,
             transitiondistribution=transitiondistribution,
@@ -46,14 +47,15 @@ def runsvl2particlefilter(svdata, params, randomstate):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, context, 'logreturn', 'logvar')
     
 def runwcsvlparticlefilter(svdata, params, randomstate):
     initialdistribution = sv.generation.LogVarInitialDistribution(params, randomstate)
-    transitiondistribution = sv.filtering.particle.WCSVLLogVarTransitionDistribution(params, randomstate)
-    weightingfunction = sv.filtering.particle.WCSVLWeightingFunction(params)    
+    context = {}
+    transitiondistribution = sv.filtering.particle.WCSVLLogVarTransitionDistribution(params, context, randomstate)
+    weightingfunction = sv.filtering.particle.WCSVLWeightingFunction(params, context)    
     particlecount = 1000
-    predictedobservationsampler = sv.filtering.particle.WCSVLPredictedObservationSampler(params, randomstate)
+    predictedobservationsampler = sv.filtering.particle.WCSVLPredictedObservationSampler(params, context, randomstate)
     stochfilter = filtering.particle.MultinomialResamplingParticleFilter(
             initialdistribution=initialdistribution,
             transitiondistribution=transitiondistribution,
@@ -63,21 +65,21 @@ def runwcsvlparticlefilter(svdata, params, randomstate):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar', dtcolumnname='dt')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, context, 'logreturn', 'logvar', dtcolumnname='dt')
     
 def runsvlgaussianfilter(svdata, params, *args):
     stochfilter = sv.filtering.gaussian.SVLGaussianFilter(params.meanlogvar, params.logvaruncondvar(), params)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar')
 
 def runsvl2gaussianfilter(svdata, params, *args):
     stochfilter = sv.filtering.gaussian.SVL2GaussianFilter(params.meanlogvar, params.logvaruncondvar(), params)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar')
 
 def rununscentedkalmanfilter(svdata, params, *args):
     f = lambda x, w: params.meanlogvar * (1. - params.persistence) + params.persistence * x + params.voloflogvar * w
     h = lambda x, v: v * np.exp(.5*x)
-    stochfilter = sv.filtering.unscented.UnscentedKalmanFilter(params.meanlogvar, params.logvaruncondvar(), 1., 1., params.cor, f, h)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    stochfilter = unscented.UnscentedKalmanFilter(params.meanlogvar, params.logvaruncondvar(), 1., 1., params.cor, f, h)
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar')
 
 def runkalmanfilter(svdata, params, *args):
     mustar = .7979 * params.cor * params.voloflogvar
@@ -98,7 +100,7 @@ def runkalmanfilter(svdata, params, *args):
     F = params.persistence - gammastar * sign / varofxi
     a = sign * (mustar + gammastar / varofxi * (np.log(observation * observation) - omega))
     
-    stochfilter = filtering.kalman.KalmanFilter(x0, P0, Q, R, F, H, a, b)
+    stochfilter = kalman.KalmanFilter(x0, P0, Q, R, F, H, a, b)
     
     def observationtransform(observation, stochfilter):
         sign = -1. if observation < 0. else 1.
@@ -106,7 +108,7 @@ def runkalmanfilter(svdata, params, *args):
         stochfilter.a = sign * (mustar + gammastar / varofxi * (np.log(observation * observation) - omega))
         return np.log(observation * observation)
     
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar', observationtransform=observationtransform)
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar', observationtransform=observationtransform)
 
 def enrichsvdata(svdata, initialprice):
     if 'logprice' not in svdata.svdf.columns:
@@ -297,24 +299,25 @@ def main():
     print('Generating SV data...')
     svdata = generatesvdata(params, timecount, randomstate)
     
-    print('Loading SV data...')
+    # print('Loading SV data...')
     # filepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\winbugs\datasets\dataset-1_GBPUSD_1981-10-01_1985-06-28.txt"
     # filepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\datasets\dataset-2_y.txt"
-    filepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\datasets\dataset-14-ESM16\dataset-14-ESM16_y.txt"
-    dtfilepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\datasets\dataset-14-ESM16\dataset-14-ESM16_dt.txt"
-    svdata = sv.loading.loadSVDataFromBUGSDataset(filepath, logreturnforward=True, logreturnscale=100., dtfilepath=dtfilepath)
+    # filepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\datasets\dataset-14-ESM16\dataset-14-ESM16_y.txt"
+    # dtfilepath = r"C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code\datasets\dataset-14-ESM16\dataset-14-ESM16_dt.txt"
+    # svdata = sv.loading.loadSVDataFromBUGSDataset(filepath, logreturnforward=True, logreturnscale=100., dtfilepath=dtfilepath)
 
     enrichsvdata(svdata, initialprice)
         
     # action = 'examinesvdata'
     # action = 'analyseparamsneighbourhood'
     # action = 'optimiseparams'
-    action = 'runsvljparticlefilteronceandanalyse'
+    # action = 'runsvljparticlefilteronceandanalyse'
     # action = 'runsvl2particlefilteronceandanalyse'
-    # action = 'runwcsvlparticlefilteronceandanalyse'
+    action = 'runwcsvlparticlefilteronceandanalyse'
     # action = 'runsvlgaussianfilteronceandanalyse'
     # action = 'runsvl2gaussianfilteronceandanalyse'
     # action = 'rununscentedkalmanfilterandanalyse'
+    # action = 'runkalmanfilterandanalyse'
     # action = 'runkalmanfilterandanalyse'
 
     print('Analysing SV data...')

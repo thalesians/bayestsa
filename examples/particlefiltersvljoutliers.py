@@ -65,7 +65,7 @@ for iteration in range(20):
             predictedobservationsampler=predictedobservationsampler,
             outlierthreshold=outlierthreshold)
     try:
-        filterrundata = filtering.run.runfilter(svdata.svdf, newparams, stochfilter, 'logreturn', 'logvar')
+        filterrundata = filtering.run.runfilter(svdata.svdf, newparams, stochfilter, {}, 'logreturn', 'logvar')
     except:
         continue
     summary = filterrundata.summary()

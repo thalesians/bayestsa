@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 import filtering.generation as gen
-import maths.numpyutils as npu
-import maths.randomness as rnd
+import thalesians.maths.numpyutils as npu
+import thalesians.maths.randomness as rnd
 from sv import CorTiming, SVData
 
 class LogVarInitialDistribution(object):

@@ -65,14 +65,15 @@ def runsvljparticlefilter(svdata, params, randomstate):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, {}, 'logreturn', 'logvar')
     
 def runsvl2particlefilter(svdata, params, randomstate):
     initialdistribution = sv.generation.LogVarInitialDistribution(params, randomstate)
-    transitiondistribution = sv.filtering.particle.SVL2LogVarTransitionDistribution(params, randomstate)
-    weightingfunction = sv.filtering.particle.SVL2WeightingFunction(params)    
+    context = {}
+    transitiondistribution = sv.filtering.particle.SVL2LogVarTransitionDistribution(params, context, randomstate)
+    weightingfunction = sv.filtering.particle.SVL2WeightingFunction(params, context)    
     particlecount = 600
-    predictedobservationsampler = sv.filtering.particle.SVL2PredictedObservationSampler(params, randomstate)
+    predictedobservationsampler = sv.filtering.particle.SVL2PredictedObservationSampler(params, context, randomstate)
     stochfilter = filtering.particle.MultinomialResamplingParticleFilter(
             initialdistribution=initialdistribution,
             transitiondistribution=transitiondistribution,
@@ -82,7 +83,7 @@ def runsvl2particlefilter(svdata, params, randomstate):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    return filtering.run.runfilter(svdata.svdf, params, stochfilter, 'logreturn', 'logvar')
+    return filtering.run.runfilter(svdata.svdf, params, stochfilter, context, 'logreturn', 'logvar')
 
 rootdir = r'C:\Users\Paul\Documents\dev\alexandria\bilokon-msc\dissertation\code'
 

@@ -3,8 +3,8 @@ import math
 import numpy as np
 import scipy.stats
 
-import maths.numpyutils as npu
-from maths.numpyutils import vectorised
+import thalesians.maths.numpyutils as npu
+from thalesians.maths.numpyutils import vectorised
 
 class SVLJLogVarTransitionDistribution(object):
     def __init__(self, params, randomstate=None):
@@ -108,8 +108,9 @@ class SVLJLogVarTransitionDistribution(object):
         return nextstate
 
 class SVL2LogVarTransitionDistribution(object):
-    def __init__(self, params, randomstate=None):
+    def __init__(self, params, context, randomstate=None):
         self.__params = params
+        self.__context = context
         self.__randomstate = npu.getrandomstate() if randomstate is None else randomstate
         self.__meanlogvartimesoneminuspersistence = self.__params.meanlogvar * (1. - self.__params.persistence)
         
@@ -118,12 +119,13 @@ class SVL2LogVarTransitionDistribution(object):
         state = npu.tondim2(state, ndim1tocolumn=True)
         logvarshock = self.__randomstate.normal(size=np.shape(state))
         nextstate = self.__meanlogvartimesoneminuspersistence + self.__params.persistence * state + self.__params.voloflogvar * logvarshock
-        stochfilter.context['logvarshock'] = logvarshock
+        self.__context['logvarshock'] = logvarshock
         return nextstate
 
 class WCSVLLogVarTransitionDistribution(object):
-    def __init__(self, params, randomstate=None):
+    def __init__(self, params, context, randomstate=None):
         self.__params = params
+        self.__context = context
         self.__randomstate = npu.getrandomstate() if randomstate is None else randomstate
         self.__oneminuspersistence = (1. - self.__params.persistence)
         self.__meanlogvartimesoneminuspersistence = self.__params.meanlogvar * self.__oneminuspersistence
@@ -132,7 +134,7 @@ class WCSVLLogVarTransitionDistribution(object):
         
     @vectorised
     def sample(self, state, stochfilter):
-        dt = stochfilter.context['dt']
+        dt = self.__context['dt']
         state = npu.tondim2(state, ndim1tocolumn=True)
         lastobservation = stochfilter.lastobservation if stochfilter.lastobservation is not None else 0.
         logvarshock = self.__randomstate.normal(size=np.shape(state))
@@ -162,14 +164,15 @@ class SVLJWeightingFunction(object):
 class SVL2WeightingFunction(object):
     PI_TIMES_2 = math.pi * 2.
 
-    def __init__(self, params):
+    def __init__(self, params, context):
         self.__cor = params.cor
         self.__oneminusrhosquared = 1. - params.cor * params.cor
         self.__halfvoloflogvar = .5 * params.voloflogvar
+        self.__context = context
     
     @vectorised
     def __call__(self, observation, particle, stochfilter):
-        eta = stochfilter.context['logvarshock'][stochfilter.currentparticleidx, :]
+        eta = self.__context['logvarshock'][stochfilter.currentparticleidx, :]
         mean = np.exp(.5*particle) * self.__cor * (eta - self.__halfvoloflogvar)
         var = self.__oneminusrhosquared * np.exp(particle)
         return 1. / np.sqrt(SVL2WeightingFunction.PI_TIMES_2 * var) * np.exp(-.5 * (observation - mean) * (observation - mean) / var)
@@ -177,12 +180,12 @@ class SVL2WeightingFunction(object):
 class WCSVLWeightingFunction(object):
     PI_TIMES_2 = math.pi * 2.
     
-    def __init__(self, params):
-        pass
+    def __init__(self, params, context):
+        self.__context = context
     
     @vectorised
     def __call__(self, observation, particle, stochfilter):
-        dt = stochfilter.context['dt']
+        dt = self.__context['dt']
         expparticle = np.exp(particle)
         var = dt * expparticle
         return 1. / np.sqrt(WCSVLWeightingFunction.PI_TIMES_2 * var) * np.exp(-.5 * observation * observation / var)
@@ -196,22 +199,24 @@ class SVLJPredictedObservationSampler(object):
         return self.__randomstate.normal(scale=np.exp(.5 * priorparticle))
 
 class SVL2PredictedObservationSampler(object):
-    def __init__(self, params, randomstate=None):
+    def __init__(self, params, context, randomstate=None):
         self.__params = params
+        self.__context = context
         self.__randomstate = npu.getrandomstate() if randomstate is None else randomstate
 
     @vectorised
     def __call__(self, priorparticle, stochfilter):
-        eta = stochfilter.context['logvarshock']
+        eta = self.__context['logvarshock']
         xi = self.__randomstate.normal(size=np.shape(eta))
         return (self.__params.cor * eta + np.sqrt(1. - self.__params.cor*self.__params.cor) * xi - .5 * self.__params.cor * self.__params.voloflogvar) * np.exp(.5 * priorparticle)
 
 class WCSVLPredictedObservationSampler(object):
-    def __init__(self, params, randomstate=None):
+    def __init__(self, params, context, randomstate=None):
         self.__params = params
+        self.__context = context
         self.__randomstate = npu.getrandomstate() if randomstate is None else randomstate
 
     @vectorised    
     def __call__(self, priorparticle, stochfilter):
-        dt = stochfilter.context['dt']
+        dt = self.__context['dt']
         return self.__randomstate.normal(scale=np.sqrt(dt) * np.exp(.5 * priorparticle))

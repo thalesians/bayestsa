@@ -14,8 +14,8 @@ class GaussianFilter(object):
         self._v2 = self._params.voloflogvar * self._params.voloflogvar
         self.predictedobservation = np.NAN
         self.lastobservation = None
-        self.innovation = np.NAN
-        self.innovationvar = np.NAN
+        self.innov = np.NAN
+        self.innovcov = np.NAN
         self.gain = np.NAN
         self.loglikelihood = 0.0
 
@@ -27,11 +27,11 @@ class GaussianFilter(object):
         raise NotImplementedError('Pure virtual method')
     
     def observe(self, observation):
-        self.innovation, self.innovationvar, crosscov = self._observeimpl(observation)
-        self.gain = crosscov / self.innovationvar
-        self.x += self.gain * self.innovation
+        self.innov, self.innovcov, crosscov = self._observeimpl(observation)
+        self.gain = crosscov / self.innovcov
+        self.x += self.gain * self.innov
         self.P -= self.gain * crosscov
-        self.loglikelihood += GaussianFilter.MINUS_HALF_LN_2PI - .5 * (np.log(self.innovationvar) + self.innovation * self.innovation / self.innovationvar)
+        self.loglikelihood += GaussianFilter.MINUS_HALF_LN_2PI - .5 * (np.log(self.innovcov) + self.innov * self.innov / self.innovcov)
         self.lastobservation = observation
                 
     @property
@@ -44,19 +44,19 @@ class SVLGaussianFilter(GaussianFilter):
     def _observeimpl(self, observation):
         efactor = np.exp(.5 * self.x + .125 * self.P)
         self.predictedobservation = .5 * efactor * self._cv
-        innovation = observation - self.predictedobservation
-        innovationvar = np.exp(self.x + .5 * self.P) * \
+        innov = observation - self.predictedobservation
+        innovcov = np.exp(self.x + .5 * self.P) * \
                 (1. + self._cv2 * (1. - .25 * np.exp(-.25 * self.P)))
         crosscov = efactor * self._cv * (.5 * self.x + .25 * self.P + 1.) - \
                 self.x * self.predictedobservation
-        return innovation, innovationvar, crosscov
+        return innov, innovcov, crosscov
 
 class SVL2GaussianFilter(GaussianFilter):
     def _observeimpl(self, observation):
         self.predictedobservation = 0.
-        innovation = observation - self.predictedobservation
-        innovationvar = np.exp(self.x + .5 * self.P) * (1. + .25 * self._cv2)
+        innov = observation - self.predictedobservation
+        innovcov = np.exp(self.x + .5 * self.P) * (1. + .25 * self._cv2)
         crosscov = np.exp(.5 * self.x + .125 * self.P) * self._cv - self.x * self.predictedobservation        
         # !!! crosscov = np.exp(.5 * self.x + .125 * self.P) * (.25 + self._params.cor) * self._params.voloflogvar - self.x * self.predictedobservation
         # crosscov = np.exp(.5 * self.x + .125 * self.P) * (1. + .25 * self._cv2) - self.x * self.predictedobservation
-        return innovation, innovationvar, crosscov
+        return innov, innovcov, crosscov

@@ -1,22 +1,27 @@
 import numpy as np
 
-import maths.numpyutils as npu
-import utils.collections
+import thalesians.maths.numpyutils as npu
+from thalesians.utilities.collections import DiagonalArray, SubdiagonalArray
+from thalesians.utilities.conditions import precondition, exactlyonenotnone
 
-def cor2cov(cors, vars=None, sds=None, copy=True):
-    assert (vars is None and sds is not None) or (vars is not None and sds is None)
-    sds = np.sqrt(vars) if vars is not None else sds
-    if isinstance(cors, (utils.collections.DiagonalArray, utils.collections.SubdiagonalArray)):
-        cors = cors.tonumpyarray()
-    cors = npu.tondim2(cors, copy=copy)
-    dim = len(vars)
-    assert dim == np.shape(cors)[0] and dim == np.shape(cors)[1]
-    np.fill_diagonal(cors, 1.)
-    for i in range(dim):
-        cors[i,:] = sds[i] * cors[i,:]
-        cors[:,i] = sds[i] * cors[:,i]
-    npu.lowertosymmetric(cors, copy=False)
-    return cors
+@precondition(lambda cor, var=None, sd=None, copy=True: exactlyonenotnone(var, sd),
+        'Exactly one of var, sd must be specified (not None)')
+def cor2cov(cor, var=None, sd=None, copy=True):
+    sd = np.sqrt(var) if var is not None else sd
+    if isinstance(cor, (DiagonalArray, SubdiagonalArray)):
+        cor = cor.tonumpyarray()
+    cor = npu.tondim2(cor, copy=copy)
+    dim = len(var)
+    assert dim == np.shape(cor)[0] and dim == np.shape(cor)[1]
+    np.fill_diagonal(cor, 1.)
+    cor = (sd.T * (sd * cor).T).T
+    npu.lowertosymmetric(cor, copy=False)
+    return cor
+
+def cov2cor(covs):
+    var = np.diag(covs)
+    sd = np.sqrt(var)
+    return ((covs / sd).T / sd.T).T
 
 def choleskysqrt2d(sd1, sd2, cor):
     return np.array(((sd1, 0.), (sd2 * cor, sd2 * np.sqrt(1. - cor * cor))))

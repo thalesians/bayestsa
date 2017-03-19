@@ -1,7 +1,7 @@
 import warnings
 
 import numpy as np
-import scipy.linalg
+import scipy.linalg as la
 
 from filtering.nearpd import nearpd
 
@@ -18,7 +18,7 @@ def sigmaPoints(x, P, alef=3.0):
     # if the matrix square root follows convention (i), then the sigma points
     # are formed from the ROWS of A. However, if the matrix square root follows
     # convention (ii), then the sigma points are formed from the COLUMNS of A.
-    # Python's scipy.linalgo.cholesky follows convention (i):
+    # Python's scipy.linalg.cholesky follows convention (i):
     #
     # >>> P = np.array([[1.,2.],[2.,5.]])
     # >>> A = scipy.linalg.cholesky(P)
@@ -27,9 +27,9 @@ def sigmaPoints(x, P, alef=3.0):
     #
     # However, we would like to use convention (ii), in which the sigma points
     # are formed from the columns of A. Therefore we transpose the result of
-    # scipy.linalgo.cholesky.
+    # scipy.linalg.cholesky.
 
-    sqrtP = scipy.linalg.cholesky(nPlusLambda * P).T
+    sqrtP = la.cholesky(nPlusLambda * P).T
 
     # The above is a Cholesky square root. Could also use a symmetric square
     # root:
@@ -83,7 +83,7 @@ def unscentedTransform(X, Wm, Wc, f):
 class UnscentedKalmanFilter(object):
     MINUS_HALF_LN_2PI = -.5 * np.log(2. * np.pi)
 
-    def __init__(self, x0, P0, Q, R, cor, f, h):
+    def __init__(self, x0, P0, Q, R, cor, f, h):        
         self.Q = Q
         self.R = R
         self.cor = cor
@@ -100,8 +100,8 @@ class UnscentedKalmanFilter(object):
         
         self.lastobservation = np.NAN
         self.predictedobservation = np.NAN
-        self.innovation = np.NAN
-        self.innovationvar = np.NAN
+        self.innov = np.NAN
+        self.innovcov = np.NAN
         self.gain = np.NAN
         
         self.loglikelihood = 0.0
@@ -143,7 +143,7 @@ class UnscentedKalmanFilter(object):
                 unscentedTransform(X, Wm, Wc, self.ha)
         self.predictedobservation = np.asscalar(self.predictedobservation)
         Pyy = np.asscalar(Pyy)
-        self.innovationvar = Pyy
+        self.innovcov = Pyy
 
         x = self.xa[0,0]
         Pxy = 0.
@@ -158,12 +158,12 @@ class UnscentedKalmanFilter(object):
         K = Pa * (1./Pyy)
         self.gain = K[0,0]
         
-        self.innovation = y - self.predictedobservation        
+        self.innov = y - self.predictedobservation        
 
-        self.xa += K * self.innovation
+        self.xa += K * self.innov
         self.Pa -= np.dot(K, Pa.T)
         
-        self.loglikelihood += UnscentedKalmanFilter.MINUS_HALF_LN_2PI - .5 * (np.log(self.innovationvar) + self.innovation * self.innovation / self.innovationvar)
+        self.loglikelihood += UnscentedKalmanFilter.MINUS_HALF_LN_2PI - .5 * (np.log(self.innovcov) + self.innov * self.innov / self.innovcov)
         
     @property
     def mean(self): return self.xa[0,0]

@@ -1,11 +1,11 @@
 import unittest
 
-import utils.collections
+from thalesians.utilities.collections import DiagonalArray, SubdiagonalArray
 
 class CollectionsTest(unittest.TestCase):
     
     def test_DiagonalArray(self):
-        a = utils.collections.DiagonalArray(5)
+        a = DiagonalArray(5)
         
         a[0,0] = 0
         a[1,0], a[1,1] = 10, 20
@@ -76,7 +76,12 @@ class CollectionsTest(unittest.TestCase):
         for k, v in a.items():
             keys.append(k)
             values.append(v)
-        self.assertSequenceEqual(keys, ((0, 0), (1, 0), (1, 1), (2, 0), (2, 1), (2, 2), (3, 0), (3, 1), (3, 2), (3, 3), (4, 0), (4, 1), (4, 2), (4, 3), (4, 4)))
+        self.assertSequenceEqual(keys, (
+                (0, 0),
+                (1, 0), (1, 1),
+                (2, 0), (2, 1), (2, 2),
+                (3, 0), (3, 1), (3, 2), (3, 3),
+                (4, 0), (4, 1), (4, 2), (4, 3), (4, 4)))
         self.assertSequenceEqual(values, (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140))
         
         self.assertEqual(a.mindim(1), 1)
@@ -96,7 +101,7 @@ class CollectionsTest(unittest.TestCase):
         self.assertEqual(a.mindim(15), 5)
 
     def test_SubdiagonalArray(self):
-        a = utils.collections.SubdiagonalArray(5)
+        a = SubdiagonalArray(5)
         a[1,0] = 0
         a[2,0], a[2,1] = 10, 20
         a[3,0], a[3,1], a[3,2] = 30, 40, 50
@@ -144,13 +149,21 @@ class CollectionsTest(unittest.TestCase):
         keys = []
         for k in a.keys():
             keys.append(k)
-        self.assertSequenceEqual(keys, ((1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2), (4, 0), (4, 1), (4, 2), (4, 3)))
+        self.assertSequenceEqual(keys, (
+                (1, 0),
+                (2, 0), (2, 1),
+                (3, 0), (3, 1), (3, 2),
+                (4, 0), (4, 1), (4, 2), (4, 3)))
 
         keys, values = [], []
         for k, v in a.items():
             keys.append(k)
             values.append(v)
-        self.assertSequenceEqual(keys, ((1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2), (4, 0), (4, 1), (4, 2), (4, 3)))
+        self.assertSequenceEqual(keys, (
+                (1, 0),
+                (2, 0), (2, 1),
+                (3, 0), (3, 1), (3, 2),
+                (4, 0), (4, 1), (4, 2), (4, 3)))
         self.assertSequenceEqual(values, (0, 10, 20, 30, 40, 50, 60, 70, 80, 90))
 
         self.assertEqual(a.mindim(1), 2)

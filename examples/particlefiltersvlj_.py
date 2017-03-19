@@ -45,7 +45,7 @@ for iteration in range(20):
             observationdim=1,
             randomstate=randomstate,
             predictedobservationsampler=predictedobservationsampler)
-    filterrundata = filtering.run.runfilter(svdata.svdf, params_pitt2014_fig1, stochfilter, 'logreturn', 'logvar')
+    filterrundata = filtering.run.runfilter(svdata.svdf, params_pitt2014_fig1, stochfilter, {}, 'logreturn', 'logvar')
     summary = filterrundata.summary()
     
     rmse.append(summary['rmse'])

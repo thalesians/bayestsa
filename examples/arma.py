@@ -75,7 +75,7 @@ a = np.zeros((m, 1))
 b = np.zeros((1, 1))
 V = np.eye(1)
 stochfilter = filtering.kalman.KalmanFilter(x0, P0, Q, R, F, H, a, b, W, V)
-filterrundata = filtering.run.runfilter(df, None, stochfilter, 'state', 'observation')
+filterrundata = filtering.run.runfilter(df, None, stochfilter, {}, 'state', 'observation')
 
 fig = plt.figure()
 filtering.visualisation.makefilterrunplot(fig, filterrundata.filterrundf)        
